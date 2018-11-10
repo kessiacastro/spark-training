@@ -25,42 +25,82 @@ object NeatTotal {
       .appName("Data Engineering Capability Development - ETL Exercises")
       .getOrCreate()
 
-    val dfOrdersRaw = spark.read
-      .option("delimiter", ";")
-      .option("header", true)
-      .option("infer_schema", true)
-      .csv(ordersBucket)
-
-    val dfOrderItemsRaw = spark.read
-      .option("delimiter", ";")
-      .option("header", true)
-      .option("infer_schema", true)
-      .csv(orderItemsBucket)
-
-    val dfProductsRaw = spark.read
-      .option("delimiter", ";")
-      .option("header", true)
-      .option("infer_schema", true)
-      .csv(productsBucket)
-
     import org.apache.spark.sql.functions._
     import spark.implicits._
 
-    val dfOrdersWithItems = dfOrdersRaw
-      .join(dfOrderItemsRaw, "OrderId")
-      .as("ooi")
-      .join(dfProductsRaw.as("p"), col("ooi.ProductId") === col("p.ProductId"))
+    // Result should be: 74988,48
 
-    val total = dfOrdersWithItems.agg(sum(($"p.Price" - $"ooi.Discount") * $"ooi.Quantity" ).as("total"))
-      .select("total").first().getAs[Double]("total")
+    val orderItemsFile = spark.read
+          .option("delimiter", ";")
+          .option("header", true)
+          .csv(orderItemsBucket)
 
-    val locale = new java.util.Locale("pt", "BR")
-    val formatter = java.text.NumberFormat.getCurrencyInstance(locale)
-    val totalFormatted = formatter.format(total)
+//    orderItemsFile.select("Discount").show(false)
 
-    log.info(s"O total de vendas foi $totalFormatted")
-    println(s"O total de vendas foi $totalFormatted")
-    //185.670.050.745
-    //cento e oitenta e cinco bilhões, seiscentos e setenta milhões, cinquenta mil e setecentos e quarenta e cinco
+    val productsFile = spark.read
+      .option("delimiter", ";")
+      .option("header", true)
+      .csv(productsBucket)
+
+//    productsFile.select("Price").show(false)
+
+    val orderItemsProducts = orderItemsFile.join(productsFile, "ProductId")
+
+    orderItemsProducts.show(false)
+    val total = orderItemsProducts.agg(sum(($"Price" - $"Discount") * $"Quantity").as("Total"))
+    val totalInfo = total.collect()(0).getAs[Double](0)
+
+    println($"Total: $totalInfo")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//    val dfOrdersRaw = spark.read
+//      .option("delimiter", ";")
+//      .option("header", true)
+//      .option("infer_schema", true)
+//      .csv(ordersBucket)
+//
+//    val dfOrderItemsRaw = spark.read
+//      .option("delimiter", ";")
+//      .option("header", true)
+//      .option("infer_schema", true)
+//      .csv(orderItemsBucket)
+//
+//    val dfProductsRaw = spark.read
+//      .option("delimiter", ";")
+//      .option("header", true)
+//      .option("infer_schema", true)
+//      .csv(productsBucket)
+//
+//    import org.apache.spark.sql.functions._
+//    import spark.implicits._
+//
+//    val dfOrdersWithItems = dfOrdersRaw
+//      .join(dfOrderItemsRaw, "OrderId")
+//      .as("ooi")
+//      .join(dfProductsRaw.as("p"), col("ooi.ProductId") === col("p.ProductId"))
+//
+//    val total = dfOrdersWithItems.agg(sum(($"p.Price" - $"ooi.Discount") * $"ooi.Quantity" ).as("total"))
+//      .select("total").first().getAs[Double]("total")
+//
+//    val locale = new java.util.Locale("pt", "BR")
+//    val formatter = java.text.NumberFormat.getCurrencyInstance(locale)
+//    val totalFormatted = formatter.format(total)
+//
+//    log.info(s"O total de vendas foi $totalFormatted")
+//    println(s"O total de vendas foi $totalFormatted")
+//    //185.670.050.745
+//    //cento e oitenta e cinco bilhões, seiscentos e setenta milhões, cinquenta mil e setecentos e quarenta e cinco
   }
 }
